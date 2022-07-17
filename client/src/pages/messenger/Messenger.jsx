@@ -13,20 +13,42 @@ export default function Messenger () {
   const [currentChat, setCurrentChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-
+  const [arrivalMessage, setArrivalMessage] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState([null]);
   const {user} = useContext(AuthContext);
   const scrollRef = useRef();
-  const socket = useRef(io("ws://localhost:8900"));
+  const socket = useRef();
+
+  useEffect(()=> {
+    socket.current = io("ws://localhost:8900");
+    socket.current.on("getMessage", data=> {
+      setArrivalMessage({
+        sender: data.senderId,
+        text: data.text,
+        createdAt: Date.now()
+      })
+    })
+  }, [])
+
+  useEffect(()=> {
+    arrivalMessage && currentChat?.members?.includes(arrivalMessage.sender) && setMessages((prev) => [...prev, arrivalMessage]);
+    console.log('arrivalM', arrivalMessage, 'curChat', currentChat);
+  }, [arrivalMessage, currentChat]);
+
+  useEffect(()=> {
+    socket.current.emit("addUser", user._id);
+    socket.current.on("getUsers", (users) => {
+      setOnlineUsers(
+        user.followings?.filter((f) => users.some((u) => u.userId === f))
+      );
+    });
+  },[user]);
 
   useEffect(()=>{
     socket.current.emit("addUser", user._id);
   },[user]);
   console.log(socket);
-  // useEffect(()=>{
-  //   socket?.on("welcome", message => {
-  //     console.log(message);
-  //   });
-  // }, [socket]);
+
   useEffect(() => {
     const getConversations = async () => {
       try {
@@ -63,6 +85,14 @@ export default function Messenger () {
       text: newMessage,
       conversationId: currentChat._id
     };
+
+    const receiverId = currentChat.members.find(member=> member!== user._id);
+    socket.current.emit("sendMessage", {
+      senderId: user._id,
+      receiverId,
+      text: newMessage
+    });
+
     try {
       const res = await axios.post("/messages", message);
       setMessages([...messages, res.data]);
@@ -71,6 +101,7 @@ export default function Messenger () {
       console.log(err);
     }
   }
+
   return (
     <div>
     <Topbar/>
@@ -112,11 +143,11 @@ export default function Messenger () {
         </div>
         <div className="chatOnline">
           <div className="chatOnlineWrapper">
-            <ChatOnline/>
-            <ChatOnline/>
-            <ChatOnline/>
-            <ChatOnline/>
-            <ChatOnline/>
+            <ChatOnline
+              onlineUsers = {onlineUsers}
+              currentId = {user._id}
+              setCurrentChat = {setCurrentChat}
+            />
           </div>
         </div>
       </div>
