@@ -1,0 +1,1 @@
+This is a real time chat app built with React, Node.js, Socket.io and adopted MERN stack based on Lama Dev's youtube tutorial: [Realtime Chat App with React, Node.js, Socket.io | MERN Stack Messenger Clone](https://www.youtube.com/watch?v=HggSXt1Hzfk&ab_channel=LamaDev)
